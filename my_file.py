@@ -5,6 +5,7 @@ import sys
 
 def check_input_file_name(source_path):
     linux_path=r"/"
+    null_path=r" "
     
     # 判断是否是linux路径,如果是，则转化为windows路径，因为python不能识别
     if linux_path in source_path:
@@ -14,6 +15,15 @@ def check_input_file_name(source_path):
         # print("linux路径被切为: "+source_path)
         source_path=source_path.replace('/',':\\',1)
         source_path=source_path.replace("/","\\")
+    
+    if null_path in source_path:
+        print("路径带空格")
+        
+        path=os.path.join(source_path)
+        print("path:"+path)
+
+    # input("key")
+    # sys.exit()
 
     print("你输入的文件是: "+source_path)
 
@@ -26,3 +36,7 @@ def check_input_file_name(source_path):
 
     return source_path
 
+def add_separate_at_blank_space(source_path):
+    if ' ' in source_path:
+        source_path='\''+source_path+'\''
+    return source_path
