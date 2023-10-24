@@ -46,9 +46,6 @@ else :
 
 print("这是文件吗 :"+str(is_file))
 
-def cmd_copy(source_path,des_path):
-    os.system("cp -rf "+source_path+" "+des_path)
-
 tmp_path=str(source_path)+"_tmp"
 if(os.path.exists(tmp_path)):
     if(os.path.isfile(tmp_path)):
@@ -59,11 +56,9 @@ if(os.path.exists(tmp_path)):
         print("tmp is exist , remove now ,result: "+str(result))
 
 if is_file:
-    # shutil.copy(source_path,tmp_path)
-    cmd_copy(source_path,tmp_path)
+    shutil.copy(source_path,tmp_path)
 else:
-    # shutil.copytree(source_path,tmp_path)
-    cmd_copy(source_path,tmp_path)
+    shutil.copytree(source_path,tmp_path)
 
 if os.path.exists(tmp_path):
     print("复制成功 !")
@@ -78,13 +73,7 @@ else:
     result=shutil.rmtree(source_path)
 
 print("删除源文件: "+str(result))
-
-# result=os.replace(tmp_path,source_path)
-# result=shutil.move(tmp_path,source_path)
-# 需要使用cmd命令去执行这种特殊操作，如复制等，不然python会去读取被操作的文件，导致加密系统发现该文件
-os.system("mv "+tmp_path+" "+source_path)
+result=os.replace(tmp_path,source_path)
 print("重命名tmp文件: "+str(result))
 
 
-
-input("\n\n按任意键退出\n")
