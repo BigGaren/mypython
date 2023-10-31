@@ -6,7 +6,11 @@ import sys
 def check_input_file_name(source_path):
     linux_path=r"/"
     null_path=r" "
+    quotation_mark="\""
+    Single_quotation_mark="\'"
     
+    print("原路径:"+source_path)
+
     # 判断是否是linux路径,如果是，则转化为windows路径，因为python不能识别
     if linux_path in source_path:
         print("路径是linux路径")
@@ -16,14 +20,23 @@ def check_input_file_name(source_path):
         source_path=source_path.replace('/',':\\',1)
         source_path=source_path.replace("/","\\")
     
-    if null_path in source_path:
-        print("路径带空格")
+    if null_path in source_path : 
         
-        path=os.path.join(source_path)
-        print("path:"+path)
+        if quotation_mark in source_path :
+            print("带空格 且带引号")
+            source_path=source_path.replace(quotation_mark,"")
+            print("处理路径后:"+source_path)
+        elif Single_quotation_mark in source_path:
+            print("带空格 且带单引号")
+            source_path=source_path.replace(Single_quotation_mark,"")
+            print("处理路径后:"+source_path)
+        # 都没有引号！
+        else:
+            print("路径带空格 且不带引号")
+            # source_path=add_separate_at_blank_space(source_path)
+            # path=os.path.join(source_path)
+            # print("path:"+source_path)
 
-    # input("key")
-    # sys.exit()
 
     print("你输入的文件是: "+source_path)
 

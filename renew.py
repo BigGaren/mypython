@@ -68,7 +68,7 @@ else:
 if os.path.exists(tmp_path):
     print("复制成功 !")
 else :
-    input(" 复制失败!")
+    input("复制失败!")
     sys.exit()
 
 result=False
