@@ -49,6 +49,12 @@ def cmd_mv(source_path,des_path):
 
     os.system("mv "+source_path+" "+des_path)
 
+def cmd_rm(source_path):
+    from my_file import add_separate_at_blank_space
+    source_path=add_separate_at_blank_space(source_path)
+
+    os.system("rm -rf "+source_path)
+
 tmp_path=str(source_path)+"_tmp"
 if(os.path.exists(tmp_path)):
     if(os.path.isfile(tmp_path)):
@@ -73,9 +79,11 @@ else :
 
 result=False
 if is_file:
-    result=os.remove(source_path)
+    # result=os.remove(source_path)
+    result=cmd_rm(source_path)
 else:
-    result=shutil.rmtree(source_path)
+    # result=shutil.rmtree(source_path)
+    result=cmd_rm(source_path)
 
 print("删除源文件: "+str(result))
 
