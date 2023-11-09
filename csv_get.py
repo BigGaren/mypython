@@ -90,10 +90,13 @@ DATA_length=8
 CRC_length=2
 _87_data="87"
 
+DT_list=[""]
+
 # need_data_index=[DT_index,WC_index,ECC_index,CRC_index,Mode_index,DATA_index]
 combination_list=[]
 for list in csv_list:
     DT=list[DT_index]
+    DT_string=""
     WC=list[WC_index]
     ECC=list[ECC_index]
     CRC=list[CRC_index]
@@ -117,6 +120,7 @@ for list in csv_list:
         # 把()里的dt提取出来
         DT=DT.split("(")
         # print("DT:"+DT[1])
+        DT_string=DT[0]
         DT=DT[1].split(")")
         DT=DT[0]
         # print("DT:"+str(DT))
@@ -192,14 +196,29 @@ for list in csv_list:
         if CRC!=" ":
             for tmp in CRC:
                 combination_data.append(tmp)
-    # 主机读取从机数据，不用理会
+    # DCS Short READ Response, 1 byte returned
     elif DT=="21":
+        continue
+    # Generic Short WRITE, 2 parameters (23)
+    elif DT=="23":
+        continue
+    # Generic Long Write (29)
+    elif DT=="29":
         continue
     # 主机无参数读取从机数据，不用理会
     elif DT=="06":
         continue
     # 从机返回错误的信息，不理会
     elif DT=="02":
+        continue
+    # 主机请求读一个字节 Generic READ, 1 parameter (14)
+    elif DT=="14":
+        continue
+    # 从机返回一个字节 Generic Short READ Response, 1 byte returned (11)
+    elif DT=="11":
+        continue
+    # 主机设置最大返回包数
+    elif DT_string=="Set Maximum Return Packet Size ":
         continue
     # 好像也是无用的意思
     elif Action=="ULPS":
@@ -244,13 +263,14 @@ for list in csv_list:
         else:
             break
     else :
-        print("Mode:"+Mode+"-DT:"+DT+"-WC:"+str(WC))
+        print("Mode:"+Mode+" -DT:"+DT+" -WC:"+str(WC))
         
         print("你这DT 数据格式不对，问题很大，好好查查什么情况")
         sys.exit()
 
     print("combination_data:"+str(combination_data),end="\n\n")
     combination_list.append(combination_data)
+    tmp_combination_data=combination_data
 
 
 
