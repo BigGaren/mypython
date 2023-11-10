@@ -24,8 +24,14 @@ csv_filename=source_path
 # 把提取出来的数据存在哪里
 write_filename=r".\test.txt"
 csv_head="Timestamp,Mode,Action,VC,DT,WC,DCS,D0,D1,D2,D3,D4,D5,D6,D7,ECC,CRC,Transaction Type,STOP\n"
-enable_high_speed=True
-enable_BTA_speed=True
+# 是否需要bta数据
+need_BTA_data=True
+# 是否需要主机发送给从机的初始化数据
+need_host_data=True
+# 当主机发送11 00 , 29 00给从机，以开启屏幕后，是否直接结束提取数据
+exit_when_2911=False
+
+
 # tab_idex=[]
 csv_list=[]
 first_line=[]
@@ -63,7 +69,8 @@ with open(csv_filename,"r") as f:
         csv_list.append(split_string)
         # print("split:"+str(csv_list[-1]))
 
-
+Trans_Type_Host="Host processor to peripheral"
+Trans_Type_Peripheral="Peripheral to host processor"
 # 以下开始提取数据！处理数据！组合数据！
 # 提取数据采用列表下标法
 #Timestamp,Mode,Action,VC,DT,WC,DCS,D0,D1,D2,D3,D4,D5,D6,D7,ECC,CRC,Transaction Type,STOP
@@ -90,10 +97,70 @@ DATA_length=8
 CRC_length=2
 _87_data="87"
 
-DT_list=[""]
+# 把csv上的一行数据，改变成mcu发送出去的数据格式
+def csv_data_to_mcu(list):
 
+    DT=list[DT_index]
+    WC=list[WC_index]
+    ECC=list[ECC_index]
+    CRC=list[CRC_index]
+    DATA=list[DATA_index]
+    Transfer_type=list[Trans_Type_index]
+
+    DATA_length=len(DATA)
+    tmp_list=[]
+    # print("csv_data_to_mcu list:"+str(list))
+
+    if DATA_length<=2 and DATA_length>=0 and DT!="39":
+        data_total=_87_length+DT_length+DATA_length+ECC_length
+        data_total=hex(data_total)
+        data_total=(data_total.split("0x"))[1].upper()
+
+        tmp_list.append(str(data_total))
+        tmp_list.append(_87_data)
+        tmp_list.append(DT)
+        for num in range(DATA_length):
+            tmp_list.append(DATA[num])
+
+        if ECC !=" ":
+            tmp_list.append(ECC)
+        
+    
+    else:
+        data_total=_87_length+DT_length+WC_length+ECC_length+DATA_length+CRC_length
+        data_total=hex(data_total)
+        data_total=(data_total.split("0x"))[1].upper()
+
+        tmp_list.append(str(data_total))
+        tmp_list.append(_87_data)
+        tmp_list.append(DT)
+
+        for tmp in WC:
+            tmp_list.append(tmp)
+        
+        if ECC !=" ":
+            tmp_list.append(ECC)
+
+        for num in range(DATA_length):
+            tmp_list.append(DATA[num])
+
+        # crc有可能为空，是中间那行
+        if CRC!=" ":
+            for tmp in CRC:
+                tmp_list.append(tmp)
+    # print("tmp_list:"+str(tmp_list))
+    return tmp_list
+
+host_to_Peripheral_list=["03","13","23","04","14","24","05","15","06","13","29","39"]
+Peripheral_to_host_list=["11","12","1A","1C","21","22"]
+BTA_list=[]
+BTA_host_list=[]
+
+BTA_status="end"
 # need_data_index=[DT_index,WC_index,ECC_index,CRC_index,Mode_index,DATA_index]
 combination_list=[]
+tmp_combination_data=[]
+tmp_list=[]
 for list in csv_list:
     DT=list[DT_index]
     DT_string=""
@@ -102,6 +169,7 @@ for list in csv_list:
     CRC=list[CRC_index]
     Mode=list[Mode_index]
     Action=list[Action_index]
+    Transfer_type=list[Trans_Type_index]
 
     DATA=list[DATA_index:DATA_index+8]
     # 去掉空元素
@@ -142,166 +210,192 @@ for list in csv_list:
         CRC2=CRC[2:]
         CRC=[CRC2,CRC1]
     # print("CRC:"+str(CRC))
+    list[DATA_index]=DATA
+    list[CRC_index]=CRC
+    list[WC_index]=WC
+    list[DT_index]=DT
 
-    # 不同数据格式，长度是不一样的，懂吗弟弟
-    data_total=0
-    if DT =="05":
-        data_total=_87_length+DT_length+DATA_length+ECC_length
-        data_total=hex(data_total)
-        data_total=(data_total.split("0x"))[1].upper()
-
-        combination_data.append(str(data_total))
-        combination_data.append(_87_data)
-        combination_data.append(DT)
-        for num in range(2):
-            combination_data.append(DATA[num])
-        # print("combin:"+str(combination_data))
-
-        if ECC !=" ":
-            combination_data.append(ECC)
-
-    elif DT=="15":
-        data_total=_87_length+DT_length+DATA_length+ECC_length
-        data_total=hex(data_total)
-        data_total=(data_total.split("0x"))[1].upper()
-
-        combination_data.append(str(data_total))
-        combination_data.append(_87_data)
-        combination_data.append(DT)
-        for num in range(2):
-            combination_data.append(DATA[num])
-
-        if ECC !=" ":
-            combination_data.append(ECC)
-
-    elif DT=="39":
-        data_total=_87_length+DT_length+WC_length+ECC_length+DATA_length+CRC_length
-        data_total=hex(data_total)
-        data_total=(data_total.split("0x"))[1].upper()
-
-        combination_data.append(str(data_total))
-        combination_data.append(_87_data)
-        combination_data.append(DT)
-
-        for tmp in WC:
-            combination_data.append(tmp)
-        
-        if ECC !=" ":
-            combination_data.append(ECC)
-
-        for num in range(DATA_length):
-            combination_data.append(DATA[num])
-
-        # crc有可能为空，是中间那行
-        if CRC!=" ":
-            for tmp in CRC:
-                combination_data.append(tmp)
-    # DCS Short READ Response, 1 byte returned
-    elif DT=="21":
-        continue
-    # Generic Short WRITE, 2 parameters (23)
-    elif DT=="23":
-        continue
-    # Generic Long Write (29)
-    elif DT=="29":
-        continue
-    # 主机无参数读取从机数据，不用理会
-    elif DT=="06":
-        continue
-    # 从机返回错误的信息，不理会
-    elif DT=="02":
-        continue
-    # 主机请求读一个字节 Generic READ, 1 parameter (14)
-    elif DT=="14":
-        continue
-    # 从机返回一个字节 Generic Short READ Response, 1 byte returned (11)
-    elif DT=="11":
-        continue
-    # 主机设置最大返回包数
-    elif DT_string=="Set Maximum Return Packet Size ":
-        continue
-    # 好像也是无用的意思
-    elif Action=="ULPS":
-        continue
-
-    # 长包的尾包
-    elif Mode==" " and \
-        DT==" " :
-        
-        for num in range(DATA_length):
-            combination_data.append(DATA[num])
-        # 进入这里，且crc不空，才能把crc写进去
-        if CRC!=" ":
-            for tmp in CRC:
-                combination_data.append(tmp)
-
-        list_tmp=combination_list[-1]
-        list_tmp+=combination_data
-
-        # print("list_tmp0:"+list_tmp[0])
-        list_tmp[0]=hex(int(list_tmp[0],16)+DATA_length)
-        # print("a list_tmp0:"+list_tmp[0])
-        list_tmp[0]=((list_tmp[0]).split("0x"))[1].upper()
-        combination_data=list_tmp
-        # 因为要把多行的超大一组数据拼接起来，所以要删掉最后一个，后面再更新它
-        combination_list.pop()
-        # print("list_tmp:"+str(list_tmp))
-        # print("combination_list:"+str(combination_list[-1]))
-        
-       
-    elif Mode=="HS" :
-        print("Mode:"+Mode+" \n\n\n")
-        # continue
-        if enable_high_speed:
-            continue
-        else:
+    if exit_when_2911:
+        if DT=="15" and DATA[0]=="11" and DATA[1]=="00" :
+            print("开屏！")
             break
-    elif Mode=="LP_BTA":
-        print("Mode:"+Mode+" \n\n\n")
-        if enable_BTA_speed:
-            continue
-        else:
-            break
-    else :
-        print("Mode:"+Mode+" -DT:"+DT+" -WC:"+str(WC))
-        
-        print("你这DT 数据格式不对，问题很大，好好查查什么情况")
-        sys.exit()
 
-    print("combination_data:"+str(combination_data),end="\n\n")
-    combination_list.append(combination_data)
-    tmp_combination_data=combination_data
-
-
-# 把提取出来的数据加上0x,首个代表长度的字节如果只有比如0xA,那改成0x0A
-add_0x_list=[]
-for list in combination_list:
-
-    if len(list[0])==1:
-        list[0]="0"+list[0]
-
-    tmp_list=[]
-    for data in list:
-        tmp_list.append("0x"+data)
-    add_0x_list.append(tmp_list)
-
-
-with open(write_filename,"w+") as f:
-    
-    for list in add_0x_list:
-        isFirst=True
-        for num in list:
-            if(isFirst):
-                f.write(num)
-                isFirst=False
+    # 数据方向是从机发往主机
+    if Transfer_type==Trans_Type_Peripheral:
+        if  DT in Peripheral_to_host_list:
+            if BTA_status=="start":
+                BTA_status="processing"
             else:
-                f.write(",")
-                f.write(num)
-        else:
-            f.write(",\n")
+                input("bta not good status!! "+"status:"+BTA_status+" \n\n")
+                sys.exit()
+
+            bta_tmp_data=csv_data_to_mcu(list)
+            
+            BTA_list.append(bta_tmp_data)
+            # print("bta:"+str(BTA_list))
+            # 上一个是高速信号，那么这里抓取不到
+            if storage_last_list[Mode_index]!="HS":
+                BTA_host_list.append(tmp_combination_data)
+            else:
+                # print("上一个是hs")
+                string="HS"
+                BTA_host_list.append((string))
+            # print("tmp_combination_data:"+str(tmp_combination_data))
+        else :
+            print("从机返回的数据DT!!!:"+DT)
+    else:
+        # 不同数据格式，长度是不一样的，懂吗弟弟
+        if DT in host_to_Peripheral_list:
+            combination_data=csv_data_to_mcu(list)
         
+        elif DT=="37":
+            continue
+        # 好像也是无用的意思
+        elif Action=="ULPS":
+            continue
 
+        # 长包的尾包
+        elif Mode==" " and \
+            DT==" " :
+            
+            for num in range(DATA_length):
+                combination_data.append(DATA[num])
+            # 进入这里，且crc不空，才能把crc写进去
+            if CRC!=" ":
+                for tmp in CRC:
+                    combination_data.append(tmp)
 
+            list_tmp=combination_list[-1]
+            list_tmp+=combination_data
+
+            # 修改数据的第一个代表总长度的字节
+            # print("list_tmp0:"+list_tmp[0])
+            list_tmp[0]=hex(int(list_tmp[0],16)+DATA_length)
+            # print("a list_tmp0:"+list_tmp[0])
+            list_tmp[0]=((list_tmp[0]).split("0x"))[1].upper()
+            combination_data=list_tmp
+            # 因为要把多行的超大一组数据拼接起来，所以要删掉最后一个，后面再更新它
+            combination_list.pop()
+            # print("list_tmp:"+str(list_tmp))
+            # print("combination_list:"+str(combination_list[-1]))
+            
+        elif Mode=="HS" :
+            tmp_list=list
+            continue
+        elif Mode=="LP_BTA":
+            # print("Mode:"+Mode)
+            if BTA_status=="end":
+                BTA_status="start"
+                storage_last_list=tmp_list
+                # print("storage:"+str(storage_last_list))
+            elif BTA_status=="processing":
+                BTA_status="end"
+                storage_last_list=[]
+            else:
+                input("BTA start error!!! "+"bta status:"+BTA_status)
+                sys.exit()
+            continue
+        elif DT_string=="Acknowledge and Error Report ":
+            print("从机返回数据失败！")
+            continue
+        else :
+            print("Mode:"+Mode+" -DT:"+DT+" -WC:"+str(WC))
+            
+            print("你这DT 数据格式不对，问题很大，好好查查什么情况")
+            continue
+            # sys.exit()
+
+        # print("combination_data:"+str(combination_data),end="\n\n")
+        combination_list.append(combination_data)
+        tmp_combination_data=combination_data
+        tmp_list=list
+    
+# 把列表都加上0x
+def list_add_0x(source_list):
+    add_0x_list=[]
+    if len(source_list)<=0:
+        print("source list has not data!")
+        sys.exit()
+        # return add_0x_list
+    
+    for list in source_list:
+        if len(list)<=0:
+            print("list has not data!")
+            # print("source list:"+str(source_list))
+            sys.exit()
+            # return add_0x_list
+        
+        if list=="HS":
+            add_0x_list.append(list)
+            continue
+        if len(list[0])==1:
+            list[0]="0"+list[0]
+
+        tmp_list=[]
+        for data in list:
+            tmp_list.append("0x"+data)
+        add_0x_list.append(tmp_list)
+    return add_0x_list
+
+if need_BTA_data:
+    BTA_list=list_add_0x(BTA_list)
+    BTA_host_list=list_add_0x(BTA_host_list)
+
+if need_host_data:
+    combination_list=list_add_0x(combination_list)
+
+def list_to_mcu_string(list):
+    isFirst=True
+    target_string=""
+
+    if list=="HS":
+        return list+"\n"
+
+    for data in list:
+        if(isFirst):
+            target_string+=data
+            isFirst=False
+        else:
+            target_string+=","
+            target_string+=data
+    else:
+        target_string+=",\n"
+    # print("string:"+target_string)
+    return target_string
+
+with open(write_filename,"w+", encoding =" UTF -8") as f:
+
+    if need_BTA_data:
+        f.write("bta数据: \n")
+        for list in BTA_list:
+            string=list_to_mcu_string(list)
+            f.write(string)
+        f.write("\n\n")
+
+        if len(BTA_host_list)== len(BTA_list):
+            len=len(BTA_host_list)
+            for num in range(len):
+                f.write("host: \n")
+                string=list_to_mcu_string(BTA_host_list[num])
+                f.write(string)
+
+                f.write("peripheral: \n")
+                string=list_to_mcu_string(BTA_list[num])
+                f.write(string)
+                f.write("\n")
+                
+        else:
+            print("bta 与主机的数据数量不一样！")
+    
+    
+    if need_host_data:
+        f.write("主机发往从机的初始化数据:\n")
+        for list in combination_list:
+            string=list_to_mcu_string(list)
+            f.write(string)
+        f.write("\n")
+
+print("成功！")
 # 暂停
 input("\n\n 请按enter键继续...")
 print("继续执行")
